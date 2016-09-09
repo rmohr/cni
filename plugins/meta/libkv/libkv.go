@@ -15,9 +15,6 @@
 // This is a "meta-plugin". It reads in its own netconf. According to the conf
 // it loads a JSON array of types.NetConf from the specified key/value store.
 // Then it delegates one loaded NetConf after the other to the specified plugin.
-// This allows storing the whole CNI configuration in a remote place. The first
-// NetConf in the array will be treated as the main configuration and it's
-// configuration will be returned as result to the caller.
 
 package main
 
@@ -47,10 +44,20 @@ const (
 )
 
 type LibKvConf struct {
-	StoreBackend store.Backend     `json:"storeBackend"`
-	Uri          string            `json:"uri"`
-	BasePath     string            `json:"basePath"`
-	StoreConfig  map[string]string `json:"storeConfig"`
+	StoreBackend store.Backend `json:"storeBackend"`
+	Uri          string        `json:"uri"`
+	BasePath     string        `json:"basePath,omitempty"`
+	StoreConfig  *StoreConfig  `json:"storeConfig,omitempty"`
+}
+
+type StoreConfig struct {
+	// TODO ClientTLS         *ClientTLSConfig
+	// TODO TLS               *tls.Config
+	// TODO needed? Bucket            string
+	// TODO needed? PersistConnection bool
+	ConnectionTimeout uint   `json:"connectionTimeout,omitempty"`
+	Username          string `json:"username,omitempty"`
+	Password          string `json:"password,omitempty"`
 }
 
 func cmdAdd(args *skel.CmdArgs) error {
@@ -59,14 +66,23 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return err
 	}
 
-	// Initialize a new store with consul
+	// Populate store config
+	storeConfig := &store.Config{}
+	if config.StoreConfig.ConnectionTimeout != 0 {
+		storeConfig.ConnectionTimeout = time.Duration(config.StoreConfig.ConnectionTimeout) * time.Second
+	}
+	if config.StoreConfig.Username != "" {
+		storeConfig.Username = config.StoreConfig.Username
+	}
+	if config.StoreConfig.Password != "" {
+		storeConfig.Password = config.StoreConfig.Password
+	}
+
+	// Initialize a new store with the provided properties
 	kv, err := libkv.NewStore(
 		config.StoreBackend,
 		[]string{config.Uri},
-		//TODO pass in the storeConfig
-		&store.Config{
-			ConnectionTimeout: 10 * time.Second,
-		},
+		storeConfig,
 	)
 	if err != nil {
 		log.Fatal("Cannot create %s store", config.StoreBackend)
@@ -107,7 +123,10 @@ func cmdAdd(args *skel.CmdArgs) error {
 }
 
 func loadPluginConfig(bytes []byte) (*LibKvConf, error) {
-	config := &LibKvConf{}
+	config := &LibKvConf{
+		BasePath:     "/",
+		StoreConfig: &StoreConfig{},
+	}
 	if err := json.Unmarshal(bytes, config); err != nil {
 		return nil, fmt.Errorf("failed to load libkv config: %v", err)
 	}
