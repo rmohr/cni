@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is a "meta-plugin". It reads in its own netconf. According to the conf
-// it loads a JSON array of types.NetConf from the specified key/value store.
-// Then it delegates one loaded NetConf after the other to the specified plugin.
+// This is a "meta-plugin". According to its config, it loads a JSON array
+// of types.NetConf from the specified key/value store. Then it delegates
+// one loaded NetConf after the other to the specified plugin.
 
 package main
 
@@ -106,6 +106,10 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 	for index, conf := range netconfs {
 		confBytes, err := json.Marshal(conf)
+		// If not the first interface, we need to get the right interface name
+		if index > 0 && conf["type"] != "loopback" {
+			args.IfName = conf["args"].(map[string]interface{})["ifName"].(string)
+		}
 		if err != nil {
 			return fmt.Errorf("Could not marshal subconfig at index %d: %v", index, err)
 		}
@@ -171,6 +175,10 @@ func cmdDel(args *skel.CmdArgs) error {
 	}
 
 	for index, conf := range netconfs {
+		// If not the first interface, we need to get the right interface name
+		if index > 0 && conf["type"] != "loopback" {
+			args.IfName = conf["args"].(map[string]interface{})["ifName"].(string)
+		}
 		confBytes, err := json.Marshal(conf)
 		if err != nil {
 			return fmt.Errorf("Could not marshal subconfig at index %d: %v", index, err)
