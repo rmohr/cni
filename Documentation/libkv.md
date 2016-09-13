@@ -90,30 +90,29 @@ etcdctl set cni/testcontainer <<EOF
 Note that the second bridge plugin execution has an `ifName` label attached.
 This label is taken to determine which name to give the extra interface in the
 network namespace. It has to be present on every configuration wich is not of
-type `loopback` and which is not the main configuration It has to be present on
-every configuration wich is not of type `loopback` and which is not the main
-configuration.
+type `loopback` and which is not the main configuration.
 
 Then create and configure the network namespace `testcontainer`:
 
 ```bash
-netnspath=/var/run/netns/testcontainer
+contid=testcontainer
+netnspath=/var/run/netns/$contid
 
 ip netns add $contid
-./exec-plugins.sh add testcontainer $netnspath
+./exec-plugins.sh add $contid $netnspath
 ```
 
 Look around in the container:
 
 ```bash
-ip netns exec testcontainer ip a
+ip netns exec $contid ip a
 ```
 
 Let cni do some cleanup and delete the namespace:
 
 ```bash
-./exec-plugins.sh del testcontainer $netnspath
-ip netns delete testcontainer
+./exec-plugins.sh del $contid $netnspath
+ip netns delete $contid
 ```
 
 ## Example Configuration
@@ -139,4 +138,3 @@ ip netns delete testcontainer
 * `uri` (string, required): Store connection URI. 
 * `basePath` (string, optional): Base path where to search for the key.
 * `storeConfig` (dictionary, optional): Additional store connection options (credentials, tls, ...).
-
