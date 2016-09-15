@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	stateDir = "/var/lib/cni/libkv"
+	stateDir = "/var/run/cni/libkv"
 )
 
 type LibKvConf struct {
